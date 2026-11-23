@@ -10,6 +10,8 @@ max_thrust = 3 # g
 throttle = 0
 throttle_change = 0.1
 
+landing_pad_cords = []
+
 
 with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
@@ -20,14 +22,23 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     while True:
         # Drawing frame
         frame = term.home + term.clear
+
+        # HUD
         frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}")
         bottom = term.height -1
+
+        # Landing pad
         frame += term.move_xy(10, bottom) + term.bold_cyan("******")
+
+        # Rocket
         frame += term.move_xy(x, round(y)) + term.yellow("#")
         print(frame, end="", flush=True)
 
         # Keys
         key = term.inkey(timeout=dt)
+        if round(y) >= term.height - 10:
+            break
+        f'x: {x} y: {y:.2f}' # TODO: print logs to a screen tui
         if key == "q":
             break
         if key == "r":
@@ -48,12 +59,11 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
 
         # Physics
         a_t = throttle * max_thrust * g
-        a_net = g-a_t
+        a_net = g - a_t
         v += a_net * dt
         y += v*dt
 
         f_g = mass*g
-
 
         if y >= term.height - 1:
             x = term.width // 2
