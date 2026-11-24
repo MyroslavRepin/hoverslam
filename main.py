@@ -1,7 +1,10 @@
 from blessed import Terminal
 import time
+import pyfiglet
 
 term = Terminal()
+banner = pyfiglet.figlet_format("SYSTEM READY", font="small")
+lines = banner.splitlines()
 
 g = 9.81
 dt = 1 / 30 # Time of each frame
@@ -24,6 +27,34 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
     y = 1.0
     v = 0.0
+
+    # Welcome screen
+    welcome_screen = True
+    while welcome_screen:
+        frame = term.home + term.clear
+        title_asci = pyfiglet.figlet_format("Hoverslam", font="ansi_shadow")
+        lines = title_asci.splitlines()
+
+        width = 0
+        for line in lines:
+            if len(line) > width:
+                width = len(line)
+
+        x0 = (term.width - width) // 2
+        y0 = 10
+
+        for i, line in enumerate(lines):
+            frame += term.move_xy(x0, y0 + i) + term.bold_cyan(line)
+        frame += term.move_xy(0, y0 + len(lines) + 1) + term.bright_black(term.center("land a rocket using *real physics"))
+        frame += term.move_xy(0, y0 + len(lines) + 3) + term.bold_cyan(term.center("< Press any key to start playing >"))
+
+        print(frame, end="", flush=True)
+        key = term.inkey(timeout=dt)
+        if key == 'q':
+            exit()
+        if key:
+            break
+
 
     def restart():
         global message_timer, throttle_message, x, y, v, throttle, fuel, state
