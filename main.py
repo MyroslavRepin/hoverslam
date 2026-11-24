@@ -9,9 +9,10 @@ mass = 1000 # kg
 max_thrust = 3 # g
 throttle = 0
 throttle_change = 0.1
+max_landing_v = 10
 
-landing_pad_cords = []
-
+message = ""
+message_timer = 0
 
 with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
@@ -24,7 +25,7 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         frame = term.home + term.clear
 
         # HUD
-        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}")
+        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}") + f' x: {x} y: {y:.2f} v: {v:.2f}'
         bottom = term.height -1
 
         # Landing pad
@@ -32,13 +33,12 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
 
         # Rocket
         frame += term.move_xy(x, round(y)) + term.yellow("#")
+        frame += term.move_xy(0, 1) + term.bold_cyan(message)
         print(frame, end="", flush=True)
 
         # Keys
         key = term.inkey(timeout=dt)
-        if round(y) >= term.height - 10:
-            break
-        f'x: {x} y: {y:.2f}' # TODO: print logs to a screen tui
+
         if key == "q":
             break
         if key == "r":
@@ -65,7 +65,39 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
 
         f_g = mass*g
 
+        if message_timer > 0:
+                    message_timer -= dt
+                    if message_timer <= 0:
+                        message = ""
+
+        # Landing on pad
+        if round(y) >= bottom - 1:
+            if 10 <= x <= 15:
+                if v <= max_landing_v:
+                    message = "Landing succesful"
+                    x = term.width // 2
+                    y = 1.0
+                    v = 0.0
+                    throttle = 0.0
+
+        # Out of bound exceptions
         if y >= term.height - 1:
+            message = "You crashed"
+            message_timer = 2
+            x = term.width // 2
+            y = 1.0
+            v = 0.0
+            throttle = 0.0
+        if x < 0 or x > term.width - 1:
+            message = "Out of bound"
+            message_timer = 2
+            x = term.width // 2
+            y = 1.0
+            v = 0.0
+            throttle = 0.0
+        if y < 0:
+            message = "Out of bound (top)"
+            message_timer = 2
             x = term.width // 2
             y = 1.0
             v = 0.0
