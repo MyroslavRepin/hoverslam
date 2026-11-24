@@ -10,6 +10,7 @@ mass = 1000 # kg
 max_thrust = 3 # g
 throttle = 0
 throttle_change = 0.1
+throttle_message = ""
 max_landing_v = 10
 
 message = ""
@@ -32,7 +33,7 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         frame = term.home + term.clear
 
         # HUD
-        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}") + f' x: {x} y: {y:.2f} v: {v:.2f} fuel: {fuel:.2f}'
+        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}") + f' x: {x} y: {y:.2f} v: {v:.2f} fuel: {fuel:.2f}'
         bottom = term.height -1
 
         # Landing pad
@@ -57,10 +58,15 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         if key == "d": x += 1
         if key == "w":
             throttle += throttle_change
+            if len(throttle_message) != 5:
+                throttle_message += "█"
             if throttle > 1:
                 throttle = 1
+
+
         if key == "s":
             throttle -= throttle_change
+            throttle_message = throttle_message[:-1]
             if throttle <= 0:
                 throttle = 0
 
