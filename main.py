@@ -1,5 +1,3 @@
-from turtle import st
-
 from blessed import Terminal
 import time
 
@@ -41,18 +39,21 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
 
     while True:
         frame_start = time.monotonic()
+        bottom = term.height -1
 
         # Drawing frame
         frame = term.home + term.clear
 
         # HUD
-        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}") + f' x: {x} y: {y:.2f} v: {v:.2f} fuel: {fuel:.2f}'
+        frame += term.move_xy(0, bottom) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}")
+        frame += term.move_xy(0, bottom-1) + term.bold_cyan('_'*term.width)
+
+
         if state == "landed":
-                frame += term.move_xy(0, term.height // 2) + term.green(term.center("LANDED"))
-        bottom = term.height -1
+            frame += term.move_xy(0, term.height // 2) + term.green(term.center("LANDED"))
 
         # Landing pad
-        frame += term.move_xy(10, bottom) + term.bold_cyan("******")
+        frame += term.move_xy(10, bottom-1) + term.bold_cyan("/▀▀▀▀▀\\")
 
         # Rocket
         frame += term.move_xy(x, round(y)) + term.yellow("#")
@@ -108,17 +109,17 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
                 throttle_message = ""
 
             # Landing on pad
-            if round(y) >= bottom - 1:
+            if round(y) >= bottom-2: # TODO: adjust landing trigger
                 if 10 <= x <= 15:
                     if v <= max_landing_v:
                         message = "Landing successful"
                         state = "landed"
 
             # Out of bound exceptions
-            if y >= term.height - 1:
+            if y >= term.height - 2:
                 message = "You crashed"
                 restart()
-            if x < 0 or x > term.width - 1:
+            if x < 0 or x > term.width - 2:
                 message = "Out of bound"
                 restart()
             if y < 0:
