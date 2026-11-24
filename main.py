@@ -1,4 +1,5 @@
 from blessed import Terminal
+import time
 
 term = Terminal()
 
@@ -14,6 +15,9 @@ max_landing_v = 10
 message = ""
 message_timer = 0
 
+fuel_cons = 14
+fuel = 100
+
 with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
     y = 1.0
@@ -21,11 +25,14 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
 
 
     while True:
+        frame_start = time.monotonic()
+
+
         # Drawing frame
         frame = term.home + term.clear
 
         # HUD
-        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}") + f' x: {x} y: {y:.2f} v: {v:.2f}'
+        frame += term.move_xy(0, 0) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle:.2f}") + f' x: {x} y: {y:.2f} v: {v:.2f} fuel: {fuel:.2f}'
         bottom = term.height -1
 
         # Landing pad
@@ -58,6 +65,8 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
                 throttle = 0
 
         # Physics
+        fuel -= fuel_cons * throttle * dt
+
         a_t = throttle * max_thrust * g
         a_net = g - a_t
         v += a_net * dt
@@ -74,11 +83,13 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         if round(y) >= bottom - 1:
             if 10 <= x <= 15:
                 if v <= max_landing_v:
-                    message = "Landing succesful"
+                    message = "Landing successful"
+                    message_timer = 2
                     x = term.width // 2
                     y = 1.0
                     v = 0.0
                     throttle = 0.0
+                    fuel = 100
 
         # Out of bound exceptions
         if y >= term.height - 1:
@@ -88,6 +99,7 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             y = 1.0
             v = 0.0
             throttle = 0.0
+            fuel = 100
         if x < 0 or x > term.width - 1:
             message = "Out of bound"
             message_timer = 2
@@ -95,6 +107,7 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             y = 1.0
             v = 0.0
             throttle = 0.0
+            fuel = 100
         if y < 0:
             message = "Out of bound (top)"
             message_timer = 2
@@ -102,3 +115,8 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             y = 1.0
             v = 0.0
             throttle = 0.0
+            fuel = 100
+
+        elapsed = time.monotonic() - frame_start
+        if elapsed < dt:
+            time.sleep(dt - elapsed)
