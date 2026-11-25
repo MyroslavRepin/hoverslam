@@ -14,6 +14,7 @@ max_thrust = 3 # g
 throttle = 0
 throttle_change = 0.1
 throttle_message = "░" * 10
+fuel_message = "█" * 10
 max_landing_v = 10
 state = "playing"
 
@@ -22,6 +23,9 @@ message_timer = 0
 
 fuel_cons = 14
 fuel = 100
+fuel_steps = []
+for i in range(10):
+    fuel_steps.append(i)
 
 with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
@@ -55,7 +59,6 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         if key:
             break
 
-
     def restart():
         global message_timer, throttle_message, x, y, v, throttle, fuel, state
         throttle_message = "░" * 10
@@ -75,8 +78,14 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         # Drawing frame
         frame = term.home + term.clear
 
+        fuel_message = ""
+        for i in fuel_steps:
+            if fuel > i * 10:
+                fuel_message += "█"
+            else:
+                fuel_message += "░"
         # HUD
-        frame += term.move_xy(0, bottom) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}")
+        frame += term.move_xy(0, bottom) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}  Fuel: {fuel_message}")
         frame += term.move_xy(0, bottom-1) + term.bold_cyan('_'*term.width)
 
 
