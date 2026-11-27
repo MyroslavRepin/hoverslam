@@ -27,9 +27,39 @@ fuel_steps = []
 for i in range(10):
     fuel_steps.append(i)
 
+
+def draw_box(text, color, side_padding=11, vertical_padding=1):
+    text_lines = text.split("\n")
+
+    longest = 0
+    for line in text_lines:
+        if len(line) > longest:
+            longest = len(line)
+
+    box_width = longest + 2 + 2 * side_padding
+    box_height = 2 + len(text_lines) + 2 * vertical_padding
+    box_left = (term.width - box_width) // 2
+    box_top = (term.height - box_height) // 2
+
+    top_border = "┌" + "─" * (box_width - 2) + "┐"
+    empty_line = "│" + " " * (box_width - 2) + "│"
+    bottom_border = "└" + "─" * (box_width - 2) + "┘"
+
+    text_box_lines = []
+    for line in text_lines:
+        text_box_lines.append("│" + " " * side_padding + line.center(longest) + " " * side_padding + "│")
+
+    box_lines = ([top_border] + [empty_line] * vertical_padding + text_box_lines
+                 + [empty_line] * vertical_padding + [bottom_border])
+
+    out = ""
+    for i, line in enumerate(box_lines):
+        out += term.move_xy(box_left, box_top + i) + color(line)
+    return out
+
 with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     x = term.width // 2
-    y = 1.0
+    alt = term.height - 4
     v = 0.0
 
     # Welcome screen
@@ -60,11 +90,11 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             break
 
     def restart():
-        global message_timer, throttle_message, x, y, v, throttle, fuel, state
+        global message_timer, throttle_message, x, alt, v, throttle, fuel, state
         throttle_message = "░" * 10
         message_timer = 2
         x = term.width // 2
-        y = 1.0
+        alt = term.height - 4
         v = 0.0
         throttle = 0.0
         fuel = 100
@@ -74,29 +104,65 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
     while True:
         frame_start = time.monotonic()
         bottom = term.height -1
+        ground_row = bottom - 2
 
         # Drawing frame
         frame = term.home + term.clear
 
         fuel_message = ""
+        if fuel > 50:
+            fuel_color = term.bold_cyan
+        elif fuel > 20:
+            fuel_color = term.bold_yellow
+        else:
+            fuel_color = term.bold_red
+
+        if abs(v) > max_landing_v:
+            velocity_color = term.bold_red
+        else:
+            velocity_color = term.bold_green
+
         for i in fuel_steps:
             if fuel > i * 10:
                 fuel_message += "█"
             else:
                 fuel_message += "░"
         # HUD
-        frame += term.move_xy(0, bottom) + term.bold_cyan(f"HOVERSLAM  v={v:5.2f}  q - exit r - restart. Throttle: {throttle_message}  Fuel: {fuel_message}")
+        hud = [
+            term.bold_cyan("HOVERSLAM"),
+            velocity_color(f"v={v:5.2f}"),
+            term.bold_cyan(f"altitude: {alt:.2f}"),
+            term.bold_cyan("q - exit r - restart."),
+            term.bold_cyan(f"Throttle: {throttle_message}"),
+            fuel_color(f"Fuel: {fuel_message}"),
+        ]
+        frame += term.move_xy(0, bottom) + " ".join(hud)
+
+
+
+        frame += term.move_xy(0, bottom)
         frame += term.move_xy(0, bottom-1) + term.bold_cyan('_'*term.width)
 
-
         if state == "landed":
-            frame += term.move_xy(0, term.height // 2) + term.green(term.center("LANDED"))
+            frame += draw_box(f"Landing\nImpact velocity: {v:.2f}\nFuel left: {fuel:.1f}", term.bold_cyan)
+        if state == "out_of_bound":
+            frame += term.move_xy(0, term.height // 2) + term.green(term.center("Out of bound"))
+            key = term.inkey(timeout=2)
+            restart()
+        if state == "crashed":
+            #frame += term.move_xy(0, term.height // 2) + term.bold_red(term.center("You crashed"))
+            #frame += term.move_xy(0, term.height // 2 + 2) + term.red(term.center(f"Velocity: {v:.2f}"))
+
+            frame += draw_box(f"Crashed\nImpact velocity: {v:.2f}", term.bold_red)
+            print(frame, flush=True, end=" ")
+            key = term.inkey(timeout=2)
+            restart()
 
         # Landing pad
         frame += term.move_xy(10, bottom-1) + term.bold_cyan("/▀▀▀▀▀\\")
 
         # Rocket
-        frame += term.move_xy(x, round(y)) + term.yellow("#")
+        frame += term.move_xy(x, ground_row - round(alt)) + term.yellow("#")
         frame += term.move_xy(0, 1) + term.bold_cyan(message)
         print(frame, end="", flush=True)
 
@@ -109,7 +175,6 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             x = term.width // 2
             restart()
         if state == "playing":
-
             if key == "a": x -= 1
             if key == "d": x += 1
             if key == "w":
@@ -134,9 +199,9 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
             fuel -= fuel_cons * throttle * dt
 
             a_t = throttle * max_thrust * g
-            a_net = g - a_t
+            a_net = a_t - g
             v += a_net * dt
-            y += v*dt
+            alt += v*dt
 
             f_g = mass*g
 
@@ -149,23 +214,20 @@ with term.fullscreen(), term.cbreak(), term.hidden_cursor():
                 throttle_message = ""
 
             # Landing on pad
-            if round(y) >= bottom-2: # TODO: adjust landing trigger
+            if round(alt) <= 0: # TODO: adjust landing trigger
                 if 10 <= x <= 15:
-                    if v <= max_landing_v:
-                        message = "Landing successful"
+                    if abs(v) <= max_landing_v:
                         state = "landed"
+                    else:
+                        state = "crashed"
 
             # Out of bound exceptions
-            if y >= term.height - 2:
-                message = "You crashed"
-                restart()
+            if alt <= -1:
+                state = "crashed"
             if x < 0 or x > term.width - 2:
-                message = "Out of bound"
-                restart()
-            if y < 0:
-                message = "Out of bound (top)"
-                restart()
-
+                state = "out_of_bound"
+            if alt > ground_row:
+                state = "crashed"
             elapsed = time.monotonic() - frame_start
             if elapsed < dt:
                 time.sleep(dt - elapsed)
